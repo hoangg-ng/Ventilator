@@ -34,7 +34,7 @@ class Ventilator(gym.Env):
         u = action * 5
         u = np.clip(action, 0, 5) 
         control_noise = np.random.normal(0, 0.05)  # Small noise for control effort
-        u += control_noise
+        u += control_noise # Add noise to the control signal
         self.Q = self.A.dot(self.Q) * self.time_step+ self.B * u * self.time_step+ self.Q
         # self.P = (self.V / self.C) + (self.R * self.Q) + self.PEEP
 
