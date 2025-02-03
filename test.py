@@ -3,7 +3,6 @@ from env import Ventilator
 from agent import Agent
 import gym
 import matplotlib.pyplot as plt
-import torch
 import tensorflow as tf
 def main():
     # Initialize the environment
@@ -11,19 +10,20 @@ def main():
     agent = Agent(input_dims=env.observation_space.shape, env=env,
             n_actions=env.action_space.shape[0])
     
-    n_games = 100
+    n_games = 500
     num_steps = 1000
     evaluate = False
     best_score = float('-inf')
     V_target = 500
-    load_checkpoint = False
+    Q_target = 300
+    load_checkpoint = True
     if load_checkpoint:
         evaluate = False
         n_steps = 0
         while n_steps <= agent.batch_size:
             observation = env.reset()
             action = env.action_space.sample()
-            observation_, reward, done, info = env.step(action,V_target)
+            observation_, Q, reward, done, info = env.step(action,Q_target)
             observation_ = observation_.squeeze()
             agent.remember(observation, action, reward, observation_, done)
             n_steps += 1
@@ -36,7 +36,7 @@ def main():
     time_step = 0.001
 
     for i in range(n_games):
-        if i > 80: evaluate = True
+        if i > n_games - 2: evaluate = True
 
         score = 0
         Q_list = []
@@ -52,7 +52,7 @@ def main():
                 action = agent.choose_action(observation, evaluate)
                 # action = tf.where(V>-1, tf.constant(5.0, shape=(1,)), action)
                 # print(action)
-                next_state, Q, reward, done, info = env.step(action,V_target)
+                next_state, Q, reward, done, info = env.step(action,Q_target)
                 # print(Q)
                 score += reward
                 V = next_state[0]

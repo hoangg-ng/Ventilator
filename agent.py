@@ -1,6 +1,6 @@
 import tensorflow as tf
 import keras as keras
-from keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam
 from buffer import ReplayBuffer
 from networks import ActorNetwork, CriticNetwork
 
@@ -8,7 +8,7 @@ from networks import ActorNetwork, CriticNetwork
 class Agent:
     def __init__(self, input_dims, alpha=0.001, beta=0.002, env=None,
                  gamma=0.99, n_actions=2, max_size=1000000, tau=0.005,
-                 fc1=400, fc2=300, batch_size=64, noise=0.1):
+                 fc1=400, fc2=300, batch_size=64, noise=0.5):
         self.gamma = gamma
         self.tau = tau
         self.memory = ReplayBuffer(max_size, input_dims, n_actions)
@@ -61,10 +61,10 @@ class Agent:
 
     def load_models(self):
         print('... loading models ...')
-        path_actor = './demo1/ddpg/actor_ddpg.h5'
-        path_target_actor = './demo1/ddpg/target_actor_ddpg.h5'
-        path_critic = './demo1/ddpg/critic_ddpg.h5'
-        path_target_critic = './demo1/ddpg/target_critic_ddpg.h5'
+        path_actor = './demo1/ddpg/actor_ddpg.weights.h5'
+        path_target_actor = './demo1/ddpg/target_actor_ddpg.weights.h5'
+        path_critic = './demo1/ddpg/critic_ddpg.weights.h5'
+        path_target_critic = './demo1/ddpg/target_critic_ddpg.weights.h5'
         self.actor.load_weights(path_actor)
         self.target_actor.load_weights(path_target_actor)
         self.critic.load_weights(path_critic)
@@ -85,7 +85,6 @@ class Agent:
             actions += noise
         actions = tf.clip_by_value(actions, self.min_action, self.max_action)
         return actions[0]
-        # return actions
 
     def learn(self):
         if self.memory.mem_cntr < self.batch_size:
@@ -105,7 +104,9 @@ class Agent:
                                 states_, target_actions), 1)
             critic_value = tf.squeeze(self.critic(states, actions), 1)
             target = rewards + self.gamma*critic_value_*(1-done)
-            critic_loss = keras.losses.MSE(target, critic_value)
+            mse_loss = tf.keras.losses.MeanSquaredError()
+            # critic_loss = keras.losses.MeanSquaredError(target, critic_value)
+            critic_loss = mse_loss(target, critic_value)
 
         critic_network_gradient = tape.gradient(critic_loss,
                                                 self.critic.trainable_variables)

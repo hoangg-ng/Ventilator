@@ -1,7 +1,7 @@
 import os
 import tensorflow as tf
 import keras as keras
-from keras.layers import Dense
+from tensorflow.keras.layers import Dense
 
 class CriticNetwork(keras.Model):
     def __init__(self, fc1_dims=512, fc2_dims=512,
@@ -13,7 +13,7 @@ class CriticNetwork(keras.Model):
         self.model_name = name
         self.checkpoint_dir = chkpt_dir
         self.checkpoint_file = os.path.join(self.checkpoint_dir, 
-                    self.model_name+'_ddpg.h5')
+                    self.model_name+'_ddpg.weights.h5')
 
         self.fc1 = Dense(self.fc1_dims, activation='relu')
         self.fc2 = Dense(self.fc2_dims, activation='relu')
@@ -38,7 +38,7 @@ class ActorNetwork(keras.Model):
         self.model_name = name
         self.checkpoint_dir = chkpt_dir
         self.checkpoint_file = os.path.join(self.checkpoint_dir, 
-                    self.model_name+'_ddpg.h5')
+                    self.model_name+'_ddpg.weights.h5')
 
         self.fc1 = Dense(self.fc1_dims, activation='relu')
         self.fc2 = Dense(self.fc2_dims, activation='relu')

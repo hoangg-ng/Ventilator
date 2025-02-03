@@ -17,6 +17,7 @@ class Ventilator(gym.Env):
         self.A = np.array([[0, 1], [-2500 / 3, -175 / 3]])
         self.B = np.array([[0], [442500]])
         self.error_prev = 0
+        self.prev_Q = 0
         # self.status = np.zeros((3, 1))
         # self.state = np.array([0.0, 0.0, 0.0])  # [i_a, omega]
         # Action =: u(t)
@@ -26,24 +27,26 @@ class Ventilator(gym.Env):
         self.observation_space = gym.spaces.Box(low=0, high=np.inf, shape=(1,), dtype=np.float32)
         self.reset()
 
-    def step(self, action,V_target):
+    def step(self, action,Q_target):
         self.V += self.Q[0,0] * self.time_step
-        error = abs(self.V - V_target)
+        # error = abs(self.V - V_target)
         # derivative = (error - self.error_prev) / self.time_step
         # self.error_prev = error
-        u = action * 5
-        u = np.clip(action, 0, 5) 
-        control_noise = np.random.normal(0, 0.05)  # Small noise for control effort
-        u += control_noise # Add noise to the control signal
+        u = action  # Add noise to the control signal
         self.Q = self.A.dot(self.Q) * self.time_step+ self.B * u * self.time_step+ self.Q
         # self.P = (self.V / self.C) + (self.R * self.Q) + self.PEEP
 
-        tracking_error_cost = error * self.time_step  
-        control_effort_cost = abs(u) * self.time_step  
-        cost_value = tracking_error_cost + 0.1 * control_effort_cost
+        # tracking_error_cost = error * self.time_step  
+        # control_effort_cost = abs(u) * self.time_step  
+        # cost_value = tracking_error_cost + 0.1 * control_effort_cost
+        error = Q_target - self.Q[0,0]
+        if abs(error) < 10:
+            reward = 10
+        else:
+            reward = -0.01 * (error**2) 
+        prev_Q = self.Q[0,0]
 
-        reward = -cost_value
-        # done = self.V >= self.target_volume 
+        # done = self.V >= self.target_volume
         done = False
         self.state = np.array([self.V])
         return self.state,self.Q[0,0], reward, done, {}
