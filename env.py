@@ -1,10 +1,6 @@
 import gymnasium as gym 
 import numpy as np
 import math
-# from gym import spaces
-# from encoder import Encoder
-# import RPi.GPIO as GPIO
-
 
 class Ventilator(gym.Env):
     def __init__(self):
@@ -21,32 +17,46 @@ class Ventilator(gym.Env):
         # self.state = np.array([0.0, 0.0, 0.0])  # [i_a, omega]
         # Action =: u(t)
         self.action_space = gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32)
-        
-        # Observation: R, C, Q, PEEP, P
         self.observation_space = gym.spaces.Box(low=0, high=np.inf, shape=(1,), dtype=np.float32)
         self.reset()
+    
+    def get_optimal_action(self, Q_target, Q_t):
+        """
+        Computes the optimal action (u) needed to move Q towards Q_target.
+        """
+        B_Q = 442500
+        A_Q = -2500 / 3
+        time_step = 0.001
+
+        optimal_u = (Q_target - Q_t + (A_Q * Q_t * time_step)) / (B_Q * time_step)
+        
+        # Ensure action is within valid range
+        optimal_u = np.clip(optimal_u, self.action_space.low[0], self.action_space.high[0])
+        
+        return np.array([optimal_u], dtype=np.float32)
 
     def step(self, action,V_target):
         self.V += self.Q[0,0] * self.time_step
         error = abs(self.V - V_target)
         # derivative = (error - self.error_prev) / self.time_step
         # self.error_prev = error
-        u = action * 5
-        u = np.clip(action, 0, 5) 
-        control_noise = np.random.normal(0, 0.05)  # Small noise for control effort
-        u += control_noise # Add noise to the control signal
+        u = action  
         self.Q = self.A.dot(self.Q) * self.time_step+ self.B * u * self.time_step+ self.Q
-        # self.P = (self.V / self.C) + (self.R * self.Q) + self.PEEP
+        error = Q_target - self.Q[0,0]
+        reward = 0
+        if abs(error) < 10:
+            reward = 10
+        else:
+            reward = -0.01 * (error**2) 
+        if error <= self.prev_error:
+            reward += 1
+        else: reward -=1
+        self.prev_error = error
 
-        tracking_error_cost = error * self.time_step  
-        control_effort_cost = abs(u) * self.time_step  
-        cost_value = tracking_error_cost + 0.1 * control_effort_cost
-
-        reward = -cost_value
-        # done = self.V >= self.target_volume 
+        # done = self.V >= self.target_volume
         done = False
-        self.state = np.array([self.V])
-        return self.state,self.Q[0,0], reward, done, {}
+        self.state = np.array([self.V, Q_target])
+        return self.state,self.Q[0,0], reward, done, {"optimal_action": optimal_u}
     
     def reset(self):
         """
@@ -54,9 +64,9 @@ class Ventilator(gym.Env):
         """
         self.V = 0 
         self.Q = np.array([[0.0], [0.0]])
+        self.Q_target = 300
         self.P = 0  
-        # self.state = np.array([self.R, self.C, self.Q, self.V, self.P])
-        self.state = np.array([self.V])
+        self.state = np.array([self.V, self.Q_target])
         return self.state
 
     def render(self, mode="human"):

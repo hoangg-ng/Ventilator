@@ -1,125 +1,101 @@
 import numpy as np
+from env import Ventilator  
 from agent import Agent
-from env import DCMotor
-from utils import plot_learning_curve
+import gym
 import matplotlib.pyplot as plt
-
-if __name__ == '__main__':
-    # env = gym.make('Pendulum-v1')
-    env = DCMotor()    
-
+import tensorflow as tf
+    
+def main():
+    # Initialize the environment
+    env = Ventilator()
     agent = Agent(input_dims=env.observation_space.shape, env=env,
             n_actions=env.action_space.shape[0])
-    n_games = 150
-
-    figure_file = 'plots/pendulum.png'
-
-    best_score = float('-inf')
-    score_history = []
-    load_checkpoint = True
+    
+    n_games = 502
+    num_steps = 1000
     evaluate = False
-    omega_target = 1
+    best_score = float('-inf')
+    V_target = 500
+    Q_target = 300
+    load_checkpoint = False
     if load_checkpoint:
         n_steps = 0
         while n_steps <= agent.batch_size:
-            observation = env.reset(omega_target)
+            observation = env.reset()
             action = env.action_space.sample()
-            observation_, reward, done, info = env.step(action, omega_target)
+            observation_, _, reward, done, info = env.step(action,Q_target)
             observation_ = observation_.squeeze()
             agent.remember(observation, action, reward, observation_, done)
             n_steps += 1
         agent.learn()
         agent.load_models()
-        # evaluate = True
-    # else:
-        # evaluate = False
+
+    V = 0 
+    # frequency = 0.005  # Breathing rate in Hz (12 breaths per minute)
+    # angular_frequency = 2 * np.pi * frequency  
+    time_step = 0.001
+
     for i in range(n_games):
-        if i > 15 :
-            evaluate = True
-        # if i %20 == 0:
-        #     omega_target = np.random.randint(-11,0)
-
-        observation = env.reset(omega_target) 
-        done = False
+        if i > 500: evaluate = True
+        Q_target = 300
         score = 0
-        step = 0
-        list_speed = []
-        list_u = []
-        list_omega_target = []
-        while step < 200:
-            negative = False
-            omega = (step/200) * 2 * np.pi
-            omega_target = np.sin(omega)
-            if omega_target < 0:
-                negative = True
-                omega_target = abs(omega_target)
-            action = agent.choose_action(observation, evaluate)
-            # if omega_target < 0: action = -action
-            observation_, reward, done , info = env.step(action, omega_target)
-            if negative:
-                u = -observation_[0] 
-                speed = -observation_[1]
-                list_omega_target.append(-omega_target)  # Append target omega
+        Q_list = []
+        V_list = []
+        V_target_list = []
+        Q_target_list = []
+        observation = env.reset()
+        for step in range(num_steps):
+            if step < 500:
+                V_target = 500
+                if Q_target == 0:
+                    observation =  env.reset()
+                action = agent.choose_action(observation, evaluate)
+                # print(agent.critic(observation,action)[:10].numpy())
+                # action = tf.where(V>-1, tf.constant(0.6, shape=(1,)), action)
+                next_state, Q, reward, done, info = env.step(action,Q_target)
+                optimal_action = info["optimal_action"]  # Get optimal action from environment
 
-            else: 
-                u = observation_[0]
-                speed = observation_[1]
-                list_omega_target.append(omega_target)  # Append target omega
-            # print("action: ",action)
-            # print(speed, "and", omega_target)
-            score += reward
-            list_speed.append(speed)
-            list_u.append(u)
-            observation_ = observation_.squeeze()
-            step += 1    
+                score += reward
+                V = next_state[0]
+                agent.remember(observation, action, reward, next_state, done, optimal_action)
+                observation = next_state
+                if step % 256 == 0 and step > 0:
+                    # print("Sample states from ReplayBuffer:", agent.memory.state_memory[:5])  # Kiểm tra 5 bản ghi đầu tiên
+                    agent.learn(step)
+            else:
+                Q_target = 0
+                Q = 0
 
-            agent.remember(observation, action, reward, observation_, done)
-            # if not load_checkpoint:
-            #     agent.learn()
-            # observation = observation_
-            agent.learn()
-            observation = observation_
-        score_history.append(score)
-        avg_score = np.mean(score_history[-100:])
+            V_list.append(V) 
+            Q_list.append(Q)
+            V_target_list.append(V_target) 
+            Q_target_list.append(Q_target) 
 
-        time_step = 0.01              # Time step
-        time = np.arange(0, len(list_speed) * time_step, time_step)  # Time array
 
-        # Plot speed and control input
+        print(f'score {i}: ', score)
+        if score > best_score:
+            best_score = score
+            agent.save_models()
+
+
+        #Plot the Volume
+        time = np.arange(0, len(V_list) * time_step, time_step) 
+
         plt.figure(figsize=(10, 6))
 
-        # Plot speed
         plt.subplot(2, 1, 1)
-        plt.plot(time, list_speed, label='Speed (rad/s)', color='blue')
-        plt.plot(time, list_omega_target, label='Target Speed (rad/s)', color='green', linestyle='--')
+        plt.plot(time, Q_list, label='Q ', color='blue')
+        plt.plot(time, Q_target_list, label='Target Q ', color='green', linestyle='--')
         plt.xlabel('Time (s)')
         plt.ylabel('Speed (rad/s)')
         plt.title('Speed vs Time')
         plt.grid(True)
         plt.legend()
-
-        # Plot control input
-        plt.subplot(2, 1, 2)
-        plt.plot(time, list_u, label='Control Input (Voltage)', color='red')
-        plt.xlabel('Time (s)')
-        plt.ylabel('Voltage (V)')
-        plt.title('Control Input vs Time')
-        plt.grid(True)
-        plt.legend()
-
+        
         plt.tight_layout()
-        plot_path = f"./plots/speed_and_u_{i}.png"
+        plot_path = f"./plots/V_{i}.png"
         plt.savefig(plot_path)
         plt.close()
-        if score > best_score:
-            best_score = score
-            agent.save_models()
-        # if avg_score > best_score:
-        #     best_score = avg_score
-        #     # if not load_checkpoint:
-        #     agent.save_models()
-        print('episode ', i, 'score %.1f' % score, 'avg score %.1f' % avg_score)
-
-    if not load_checkpoint:
-        x = [i+1 for i in range(n_games)]
-        plot_learning_curve(x, score_history, figure_file)
+        
+if __name__ == "__main__":
+    main()
