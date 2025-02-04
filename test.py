@@ -83,8 +83,8 @@ def main():
         plt.figure(figsize=(10, 6))
 
         plt.subplot(2, 1, 1)
-        plt.plot(time, Q_list, label='Volume ', color='blue')
-        plt.plot(time, Q_target_list, label='Target Volume ', color='green', linestyle='--')
+        plt.plot(time, Q_list, label='Q ', color='blue')
+        plt.plot(time, Q_target_list, label='Target Q ', color='green', linestyle='--')
         plt.xlabel('Time (s)')
         plt.ylabel('Speed (rad/s)')
         plt.title('Speed vs Time')

@@ -8,7 +8,7 @@ from networks import ActorNetwork, CriticNetwork
 class Agent:
     def __init__(self, input_dims, alpha=0.001, beta=0.002, env=None,
                  gamma=0.99, n_actions=2, max_size=1000000, tau=0.005,
-                 fc1=400, fc2=300, batch_size=64, noise=0.5):
+                 fc1=400, fc2=300, batch_size=64, noise=1):
         self.gamma = gamma
         self.tau = tau
         self.memory = ReplayBuffer(max_size, input_dims, n_actions)
@@ -61,10 +61,10 @@ class Agent:
 
     def load_models(self):
         print('... loading models ...')
-        path_actor = './demo1/ddpg/actor_ddpg.weights.h5'
-        path_target_actor = './demo1/ddpg/target_actor_ddpg.weights.h5'
-        path_critic = './demo1/ddpg/critic_ddpg.weights.h5'
-        path_target_critic = './demo1/ddpg/target_critic_ddpg.weights.h5'
+        path_actor = './saved_model/actor_ddpg.weights.h5'
+        path_target_actor = './saved_model/target_actor_ddpg.weights.h5'
+        path_critic = './saved_model/critic_ddpg.weights.h5'
+        path_target_critic = './saved_model/target_critic_ddpg.weights.h5'
         self.actor.load_weights(path_actor)
         self.target_actor.load_weights(path_target_actor)
         self.critic.load_weights(path_critic)
