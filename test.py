@@ -4,13 +4,14 @@ from agent import Agent
 import gym
 import matplotlib.pyplot as plt
 import tensorflow as tf
+    
 def main():
     # Initialize the environment
     env = Ventilator()
     agent = Agent(input_dims=env.observation_space.shape, env=env,
             n_actions=env.action_space.shape[0])
     
-    n_games = 500
+    n_games = 52
     num_steps = 1000
     evaluate = False
     best_score = float('-inf')
@@ -18,12 +19,11 @@ def main():
     Q_target = 300
     load_checkpoint = True
     if load_checkpoint:
-        evaluate = False
         n_steps = 0
         while n_steps <= agent.batch_size:
             observation = env.reset()
             action = env.action_space.sample()
-            observation_, Q, reward, done, info = env.step(action,Q_target)
+            observation_, _, reward, done, info = env.step(action,Q_target)
             observation_ = observation_.squeeze()
             agent.remember(observation, action, reward, observation_, done)
             n_steps += 1
@@ -31,13 +31,13 @@ def main():
         agent.load_models()
 
     V = 0 
-    frequency = 0.005  # Breathing rate in Hz (12 breaths per minute)
-    angular_frequency = 2 * np.pi * frequency  # Angular frequency
+    # frequency = 0.005  # Breathing rate in Hz (12 breaths per minute)
+    # angular_frequency = 2 * np.pi * frequency  
     time_step = 0.001
 
     for i in range(n_games):
-        if i > n_games - 2: evaluate = True
-
+        if i > 50: evaluate = True
+        Q_target = 300
         score = 0
         Q_list = []
         V_list = []
@@ -47,7 +47,7 @@ def main():
         for step in range(num_steps):
             if step < 500:
                 V_target = 500
-                if V_target == 0:
+                if Q_target == 0:
                     observation =  env.reset()
                 action = agent.choose_action(observation, evaluate)
                 # action = tf.where(V>-1, tf.constant(5.0, shape=(1,)), action)
@@ -57,11 +57,10 @@ def main():
                 score += reward
                 V = next_state[0]
                 # Q_target = (V - V_list[-1])/time_step if step >0 else 0
-                Q_target = 300
-                # print(Q_target)
                 agent.remember(observation, action, reward, next_state, done)
-                agent.learn()
                 observation = next_state
+                if step % 100 == 0 and step > 0:
+                    agent.learn()
             else:
                 Q_target = 0
                 Q = 0
@@ -76,6 +75,7 @@ def main():
         if score > best_score:
             best_score = score
             agent.save_models()
+
 
         #Plot the Volume
         time = np.arange(0, len(V_list) * time_step, time_step) 

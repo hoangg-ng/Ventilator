@@ -17,13 +17,8 @@ class Ventilator(gym.Env):
         self.A = np.array([[0, 1], [-2500 / 3, -175 / 3]])
         self.B = np.array([[0], [442500]])
         self.error_prev = 0
-        self.prev_Q = 0
-        # self.status = np.zeros((3, 1))
-        # self.state = np.array([0.0, 0.0, 0.0])  # [i_a, omega]
-        # Action =: u(t)
+        self.prev_error = 0
         self.action_space = gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32)
-        
-        # Observation: R, C, Q, PEEP, P
         self.observation_space = gym.spaces.Box(low=0, high=np.inf, shape=(1,), dtype=np.float32)
         self.reset()
 
@@ -32,19 +27,18 @@ class Ventilator(gym.Env):
         # error = abs(self.V - V_target)
         # derivative = (error - self.error_prev) / self.time_step
         # self.error_prev = error
-        u = action  # Add noise to the control signal
+        u = action  
         self.Q = self.A.dot(self.Q) * self.time_step+ self.B * u * self.time_step+ self.Q
-        # self.P = (self.V / self.C) + (self.R * self.Q) + self.PEEP
-
-        # tracking_error_cost = error * self.time_step  
-        # control_effort_cost = abs(u) * self.time_step  
-        # cost_value = tracking_error_cost + 0.1 * control_effort_cost
         error = Q_target - self.Q[0,0]
+        reward = 0
         if abs(error) < 10:
             reward = 10
         else:
             reward = -0.01 * (error**2) 
-        prev_Q = self.Q[0,0]
+        if error <= self.prev_error:
+            reward += 1
+        else: reward -=1
+        self.prev_error = error
 
         # done = self.V >= self.target_volume
         done = False

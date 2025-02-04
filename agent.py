@@ -1,14 +1,14 @@
 import tensorflow as tf
 import keras as keras
-from tensorflow.keras.optimizers import Adam
+from keras.optimizers import Adam
 from buffer import ReplayBuffer
 from networks import ActorNetwork, CriticNetwork
 
 
 class Agent:
-    def __init__(self, input_dims, alpha=0.001, beta=0.002, env=None,
+    def __init__(self, input_dims, alpha=0.002, beta=0.004, env=None,
                  gamma=0.99, n_actions=2, max_size=1000000, tau=0.005,
-                 fc1=400, fc2=300, batch_size=64, noise=1):
+                 fc1=400, fc2=300, batch_size=64, noise=0.5):
         self.gamma = gamma
         self.tau = tau
         self.memory = ReplayBuffer(max_size, input_dims, n_actions)
@@ -61,10 +61,10 @@ class Agent:
 
     def load_models(self):
         print('... loading models ...')
-        path_actor = './saved_model/actor_ddpg.weights.h5'
-        path_target_actor = './saved_model/target_actor_ddpg.weights.h5'
-        path_critic = './saved_model/critic_ddpg.weights.h5'
-        path_target_critic = './saved_model/target_critic_ddpg.weights.h5'
+        path_actor = './ddpg/actor_ddpg.weights.h5'
+        path_target_actor = './ddpg/target_actor_ddpg.weights.h5'
+        path_critic = './ddpg/critic_ddpg.weights.h5'
+        path_target_critic = './ddpg/target_critic_ddpg.weights.h5'
         self.actor.load_weights(path_actor)
         self.target_actor.load_weights(path_target_actor)
         self.critic.load_weights(path_critic)
@@ -74,12 +74,35 @@ class Agent:
         # self.target_actor.load_weights(self.target_actor.checkpoint_file)
         # self.critic.load_weights(self.critic.checkpoint_file)
         # self.target_critic.load_weights(self.target_critic.checkpoint_file)
+    # def get_noise(self, game):
+    #     match game:
+    #         case _ if 0 <= game < 20:
+    #             return 0.5
+    #         case _ if 21 <= game < 40:
+    #             return 0.4
+    #         case _ if 41 <= game < 60:
+    #             return 0.3
+    #         case _ if 61 <= game < 80:
+    #             return 0.2
+    #         case _ if 81 <= game < 100:
+    #             return 0.1
+    #         case _ if 101 <= game < 120:
+    #             return 0.4
+    #         case _ if 121 <= game <140:
+    #             return 0.3
+    #         case _ if 141 <= game < 160:
+    #             return 0.2
+    #         case _ if 161 <= game < 180:
+    #             return 0.1
+    #         case _:
+    #             return 0.0
 
     def choose_action(self, observation, evaluate):
         state = tf.convert_to_tensor([observation], dtype=tf.float32)
         state = tf.reshape(state, (1, -1))  # Reshape to (1, 3)
         actions = self.actor(state)
-
+        print(actions) 
+        
         if not evaluate:
             noise = tf.random.normal(shape=[self.n_actions], mean=0.0, stddev = self.noise)
             actions += noise
