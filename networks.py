@@ -20,9 +20,9 @@ class CriticNetwork(keras.Model):
         # self.fc1 = Dense(self.fc1_dims, activation='relu')
         # self.fc2 = Dense(self.fc2_dims, activation='relu')
         self.fc1 = Dense(self.fc1_dims)
-        self.lrelu1 = LeakyReLU(alpha=0.01)
+        self.lrelu1 = LeakyReLU(alpha=0.05)
         self.fc2 = Dense(self.fc2_dims)
-        self.lrelu2 = LeakyReLU(alpha=0.01)
+        self.lrelu2 = LeakyReLU(alpha=0.05)
 
         self.q = Dense(1, activation=None)
 

@@ -11,33 +11,31 @@ def main():
     agent = Agent(input_dims=env.observation_space.shape, env=env,
             n_actions=env.action_space.shape[0])
     
-    n_games = 502
+    n_games = 500
     num_steps = 1000
     evaluate = False
     best_score = float('-inf')
     V_target = 500
-    Q_target = 300
+    Q_target = np.random.uniform(100,400)
     load_checkpoint = False
     if load_checkpoint:
         n_steps = 0
         while n_steps <= agent.batch_size:
             observation = env.reset()
             action = env.action_space.sample()
-            observation_, _, reward, done, info = env.step(action,Q_target)
+            observation_, _, reward, done = env.step(action,Q_target)
             observation_ = observation_.squeeze()
             agent.remember(observation, action, reward, observation_, done)
             n_steps += 1
-        agent.learn()
+        agent.learn(256)
         agent.load_models()
 
     V = 0 
-    # frequency = 0.005  # Breathing rate in Hz (12 breaths per minute)
-    # angular_frequency = 2 * np.pi * frequency  
     time_step = 0.001
 
     for i in range(n_games):
         if i > 500: evaluate = True
-        Q_target = 300
+        Q_target = np.random.uniform(100,400)
         score = 0
         Q_list = []
         V_list = []
@@ -52,15 +50,14 @@ def main():
                 action = agent.choose_action(observation, evaluate)
                 # print(agent.critic(observation,action)[:10].numpy())
                 # action = tf.where(V>-1, tf.constant(0.6, shape=(1,)), action)
-                next_state, Q, reward, done, info = env.step(action,Q_target)
-                optimal_action = info["optimal_action"]  # Get optimal action from environment
+                next_state, Q, reward, done = env.step(action,Q_target)
+                # optimal_action = info["optimal_action"]  # Get optimal action from environment
 
                 score += reward
                 V = next_state[0]
-                agent.remember(observation, action, reward, next_state, done, optimal_action)
+                agent.remember(observation, action, reward, next_state, done)
                 observation = next_state
-                if step % 256 == 0 and step > 0:
-                    # print("Sample states from ReplayBuffer:", agent.memory.state_memory[:5])  # Kiểm tra 5 bản ghi đầu tiên
+                if step % 128 == 0 and step > 0:
                     agent.learn(step)
             else:
                 Q_target = 0

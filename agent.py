@@ -6,12 +6,11 @@ from networks import ActorNetwork, CriticNetwork
 
 
 class Agent:
-    def __init__(self, input_dims, alpha=0.001, beta=0.0015, env=None,
+    def __init__(self, input_dims, alpha=0.1, beta=0.15, env=None,
                  gamma=0.95, n_actions=2, max_size=1000000, tau=0.005,
-                 fc1=400, fc2=300, batch_size=256, noise=0.8):
+                 fc1=400, fc2=300, batch_size=32, noise=0.5):
         self.gamma = gamma
         self.tau = tau
-        breakpoint()
         self.memory = ReplayBuffer(max_size, input_dims, n_actions)
         self.batch_size = batch_size
         self.n_actions = n_actions
@@ -61,8 +60,8 @@ class Agent:
         for i, weight in enumerate(self.critic2.weights):
             weights.append(weight * tau + targets[i]*(1-tau))
         self.target_critic2.set_weights(weights)
-    def remember(self, state, action, reward, new_state, done, optimal_action):
-        self.memory.store_transition(state, action, reward, new_state, done, optimal_action)
+    def remember(self, state, action, reward, new_state, done):
+        self.memory.store_transition(state, action, reward, new_state, done)
 
     def save_models(self):
         print('... saving models ...')
@@ -77,13 +76,16 @@ class Agent:
         print('... loading models ...')
         path_actor = './saved/actor_ddpg.weights.h5'
         path_target_actor = './saved/target_actor_ddpg.weights.h5'
-        path_critic = './saved/critic_ddpg.weights.h5'
-        path_target_critic = './saved/target_critic_ddpg.weights.h5'
+        path_critic1 = './saved/critic1_ddpg.weights.h5'
+        path_target_critic1 = './saved/target_critic1_ddpg.weights.h5'
+        path_critic2 = './saved/critic2_ddpg.weights.h5'
+        path_target_critic2 = './saved/target_critic2_ddpg.weights.h5'
         self.actor.load_weights(path_actor)
         self.target_actor.load_weights(path_target_actor)
-        self.critic.load_weights(path_critic)
-        self.target_critic.load_weights(path_target_critic)
-
+        self.critic1.load_weights(path_critic1)
+        self.target_critic1.load_weights(path_target_critic1)
+        self.critic2.load_weights(path_critic2)
+        self.target_critic1.load_weights(path_target_critic1)
         # self.actor.load_weights(self.target_actor.checkpoint_file)
         # self.target_actor.load_weights(self.target_actor.checkpoint_file)
         # self.critic.load_weights(self.critic.checkpoint_file)
@@ -107,7 +109,7 @@ class Agent:
         if self.memory.mem_cntr < self.batch_size:
             return
 
-        state, action, reward, new_state, done, optimal_action= \
+        state, action, reward, new_state, done= \
             self.memory.sample_buffer(self.batch_size)
 
         states = tf.convert_to_tensor(state, dtype=tf.float32)
@@ -150,9 +152,6 @@ class Agent:
                 new_policy_actions = self.actor(states)
                 # actor_loss = -tf.math.reduce_mean(self.critic1(states, new_policy_actions))  # Only use Critic 1
                 actor_loss = -self.critic1(states, new_policy_actions)
-                supervised_loss = tf.keras.losses.MSE(optimal_action, new_policy_actions)
-                total_loss = tf.math.reduce_mean(actor_loss) + 0.5 * tf.math.reduce_mean(supervised_loss)
-            actor_grads = tape.gradient(total_loss, self.actor.trainable_variables)
-            self.actor.optimizer.apply_gradients(zip(actor_grads, self.actor.trainable_variables))
+            self.actor.optimizer.apply_gradients(zip(actor_loss, self.actor.trainable_variables))
 
             self.update_network_parameters() 
