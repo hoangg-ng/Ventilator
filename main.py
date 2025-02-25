@@ -16,10 +16,11 @@ def main():
     evaluate = False
     best_score = float('-inf')
     V_target = 500
-    Q_target = np.random.uniform(100,400)
     load_checkpoint = False
     if load_checkpoint:
+        evaluate = True
         n_steps = 0
+        Q_target = 250
         while n_steps <= agent.batch_size:
             observation = env.reset()
             action = env.action_space.sample()
@@ -27,7 +28,7 @@ def main():
             observation_ = observation_.squeeze()
             agent.remember(observation, action, reward, observation_, done)
             n_steps += 1
-        agent.learn(256)
+        agent.learn(250)
         agent.load_models()
 
     V = 0 
@@ -36,6 +37,7 @@ def main():
     for i in range(n_games):
         if i > 500: evaluate = True
         Q_target = np.random.uniform(100,400)
+        # Q_target = 250
         score = 0
         Q_list = []
         V_list = []
@@ -52,7 +54,6 @@ def main():
                 # action = tf.where(V>-1, tf.constant(0.6, shape=(1,)), action)
                 next_state, Q, reward, done = env.step(action,Q_target)
                 # optimal_action = info["optimal_action"]  # Get optimal action from environment
-
                 score += reward
                 V = next_state[0]
                 agent.remember(observation, action, reward, next_state, done)
@@ -74,7 +75,6 @@ def main():
             best_score = score
             agent.save_models()
 
-
         #Plot the Volume
         time = np.arange(0, len(V_list) * time_step, time_step) 
 
@@ -93,6 +93,10 @@ def main():
         plot_path = f"./plots/V_{i}.png"
         plt.savefig(plot_path)
         plt.close()
+
+        if score > 25000 and evaluate: 
+            print("Task Completed")
+            break
         
 if __name__ == "__main__":
     main()

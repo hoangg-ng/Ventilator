@@ -4,11 +4,10 @@ from tensorflow.keras.optimizers import Adam
 from buffer import ReplayBuffer
 from networks import ActorNetwork, CriticNetwork
 
-
 class Agent:
-    def __init__(self, input_dims, alpha=0.1, beta=0.15, env=None,
+    def __init__(self, input_dims, alpha=0.001, beta=0.0015, env=None,
                  gamma=0.95, n_actions=2, max_size=1000000, tau=0.005,
-                 fc1=400, fc2=300, batch_size=32, noise=0.5):
+                 fc1=400, fc2=300, batch_size=32, noise=0.7):
         self.gamma = gamma
         self.tau = tau
         self.memory = ReplayBuffer(max_size, input_dims, n_actions)
@@ -85,7 +84,7 @@ class Agent:
         self.critic1.load_weights(path_critic1)
         self.target_critic1.load_weights(path_target_critic1)
         self.critic2.load_weights(path_critic2)
-        self.target_critic1.load_weights(path_target_critic1)
+        self.target_critic2.load_weights(path_target_critic2)
         # self.actor.load_weights(self.target_actor.checkpoint_file)
         # self.target_actor.load_weights(self.target_actor.checkpoint_file)
         # self.critic.load_weights(self.critic.checkpoint_file)
@@ -124,7 +123,7 @@ class Agent:
         target_actions = tf.clip_by_value(target_actions + target_noise, self.min_action, self.max_action)
         target_q1 = self.target_critic1(states_, target_actions)
         target_q2 = self.target_critic2(states_, target_actions)
-        target_q = 0.1 * target_q1 + 0.9
+        target_q = 0.1 * target_q2 + target_q1 *0.9
         target = rewards + self.gamma * target_q * (1 - done)
 
 

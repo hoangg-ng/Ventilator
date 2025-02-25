@@ -26,7 +26,8 @@ class Ventilator(gym.Env):
         error = abs(Q_target - self.Q[0,0])
         # reward = 0
         reward = 50 - 10 * np.log(1 + abs(error))
-        reward -= 0.2 * error      
+        reward -= 0.01* error**2   
+        # reward -= 0.15 * (error**2)      
         if error < 3:
             reward += 100
         elif error < 10:
@@ -37,7 +38,8 @@ class Ventilator(gym.Env):
         action_low = self.action_space.low[0]
         if abs(u - action_high) < 1e-3 or abs(u - action_low) < 1e-3:
             reward -= 5  # adjust the penalty strength as needed
-
+        if self.prev_error < error:
+            reward += abs(self.prev_error - error) * 5
         self.prev_error = error
         done = False
         self.state = np.array([self.V, Q_target])
